@@ -17,20 +17,11 @@ jobs:
           java-version: 17
           distribution: 'zulu'
 
-      - name: 安装 gradle wrapper
-        run: |
-          apt-get update -qq
-          apt-get install -y -qq gradle 2>/dev/null || true
-          # 如果apt不行，直接下二进制
-          if ! command -v gradle &> /dev/null; then
-            curl -sL https://services.gradle.org/distributions/gradle-8.5-bin.zip -o /tmp/gradle.zip
-            unzip -q /tmp/gradle.zip -d /opt
-            ln -s /opt/gradle-8.5/bin/gradle /usr/local/bin/gradle
-          fi
-          gradle wrapper --gradle-version 8.5
-
-      - name: 构建 Debug APK
-        run: ./gradlew assembleDebug
+      - name: 设置 Gradle 并构建
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: "8.5"
+          arguments: assembleDebug
 
       - name: 上传 APK
         uses: actions/upload-artifact@v4
