@@ -26,7 +26,6 @@ class OverlayService : Service() {
     private var lastSwitchTime = 0L
     private val handler = Handler(Looper.getMainLooper())
 
-    // App反应映射
     private val appReactions = mapOf(
         "com.ss.android.ugc.aweme" to "抖音",
         "com.xhs.inhouse" to "小红书",
@@ -149,7 +148,6 @@ class OverlayService : Service() {
                             val isJealous = pkg in jealousApps
                             val now = System.currentTimeMillis()
                             
-                            // 快速切换检测
                             if (now - lastSwitchTime < 60000) {
                                 appSwitchCount++
                             } else {
@@ -170,7 +168,6 @@ class OverlayService : Service() {
                     }
                 } catch (_: Exception) { }
                 
-                // 智能调度
                 val dm = getSystemService(Context.POWER_SERVICE) as? android.os.PowerManager
                 val screenOn = dm?.isInteractive ?: true
                 val interval = if (screenOn) 3000L else 10000L
