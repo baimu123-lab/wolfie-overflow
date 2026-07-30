@@ -17,11 +17,17 @@ jobs:
           java-version: 17
           distribution: 'zulu'
 
-      - name: 设置 Gradle 并构建
-        uses: gradle/actions/setup-gradle@v3
-        with:
-          gradle-version: "8.5"
-          arguments: assembleDebug
+      - name: 安装 Gradle
+        run: |
+          curl -sL "https://services.gradle.org/distributions/gradle-8.5-bin.zip" -o /tmp/gradle.zip
+          unzip -q /tmp/gradle.zip -d /opt
+          echo "/opt/gradle-8.5/bin" >> $GITHUB_PATH
+
+      - name: 生成 Gradle Wrapper
+        run: gradle wrapper --gradle-version 8.5
+
+      - name: 构建 Debug APK
+        run: ./gradlew assembleDebug
 
       - name: 上传 APK
         uses: actions/upload-artifact@v4
