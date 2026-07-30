@@ -12,201 +12,210 @@ body{
   width:150px;
   height:150px;
 }
-canvas{
-  image-rendering:pixelated;
-  image-rendering:crisp-edges;
+.wolf-container{width:80px;height:80px;position:relative;}
+svg{width:100%;height:100%;overflow:visible;}
+.bubble{
+  position:absolute;top:-30px;left:50%;transform:translateX(-50%);
+  background:rgba(255,255,255,0.15);backdrop-filter:blur(4px);
+  border-radius:10px;padding:4px 10px;
+  color:#fff;font-size:11px;font-family:sans-serif;
+  white-space:nowrap;opacity:0;transition:opacity 0.3s;
+  pointer-events:none;
 }
+.bubble.show{opacity:1;}
+.heart{
+  position:absolute;top:10px;left:50%;transform:translateX(-50%);
+  font-size:20px;opacity:0;transition:all 0.5s;
+  pointer-events:none;
+}
+.heart.show{opacity:1;transform:translateX(-50%) translateY(-20px);}
 </style>
 </head><body>
-<canvas id="c" width="14" height="14"></canvas>
+<div class="wolf-container">
+  <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" id="wolfSvg">
+    <!-- 尾巴 -->
+    <ellipse id="tail" cx="82" cy="70" rx="12" ry="6" fill="#2d2d2d" transform="rotate(-25,82,70)" style="transition:transform 0.3s"/>
+    <!-- 左耳 -->
+    <polygon points="26,30 18,8 36,24" fill="#2d2d2d"/>
+    <polygon points="26,28 22,14 34,24" fill="#404040"/>
+    <!-- 右耳 -->
+    <polygon points="74,30 82,8 64,24" fill="#2d2d2d"/>
+    <polygon points="74,28 78,14 66,24" fill="#404040"/>
+    <!-- 身体 -->
+    <ellipse id="body" cx="50" cy="60" rx="32" ry="30" fill="#2d2d2d" style="transition:transform 0.3s"/>
+    <!-- 肚子高光 -->
+    <ellipse cx="50" cy="65" rx="20" ry="18" fill="#333333" opacity="0.5"/>
+    <!-- 左眼白 -->
+    <ellipse id="leftEye" cx="36" cy="50" rx="9" ry="10" fill="#fff" style="transition:all 0.15s"/>
+    <!-- 左瞳孔 -->
+    <ellipse id="leftPupil" cx="36" cy="50" rx="5.5" ry="6.5" fill="#1a1a1a" style="transition:all 0.15s"/>
+    <!-- 左眼高光 -->
+    <circle cx="33" cy="47" r="2.5" fill="#fff"/>
+    <!-- 右眼白 -->
+    <ellipse id="rightEye" cx="64" cy="50" rx="9" ry="10" fill="#fff" style="transition:all 0.15s"/>
+    <!-- 右瞳孔 -->
+    <ellipse id="rightPupil" cx="64" cy="50" rx="5.5" ry="6.5" fill="#1a1a1a" style="transition:all 0.15s"/>
+    <!-- 右眼高光 -->
+    <circle cx="61" cy="47" r="2.5" fill="#fff"/>
+    <!-- 鼻子 -->
+    <ellipse cx="50" cy="58" rx="4" ry="3" fill="#1a1a1a"/>
+    <!-- 嘴巴 -->
+    <path id="mouth" d="M46 62 Q50 66 54 62" stroke="#1a1a1a" stroke-width="1.5" fill="none" style="transition:all 0.3s"/>
+    <!-- 腮红 -->
+    <ellipse id="blushL" cx="28" cy="58" rx="5" ry="3" fill="#ff6b6b" opacity="0" style="transition:opacity 0.3s"/>
+    <ellipse id="blushR" cx="72" cy="58" rx="5" ry="3" fill="#ff6b6b" opacity="0" style="transition:opacity 0.3s"/>
+    <!-- 生气眉毛 -->
+    <line id="browL" x1="27" y1="37" x2="43" y2="40" stroke="#1a1a1a" stroke-width="2.5" opacity="0" style="transition:opacity 0.3s"/>
+    <line id="browR" x1="73" y1="37" x2="57" y2="40" stroke="#1a1a1a" stroke-width="2.5" opacity="0" style="transition:opacity 0.3s"/>
+    <!-- 泪滴 -->
+    <ellipse id="tearL" cx="28" cy="56" rx="2" ry="3" fill="#7ec8e3" opacity="0" style="transition:opacity 0.3s"/>
+    <ellipse id="tearR" cx="72" cy="56" rx="2" ry="3" fill="#7ec8e3" opacity="0" style="transition:opacity 0.3s"/>
+    <!-- Zzz -->
+    <text id="zzz" x="75" y="22" fill="#aaa" font-size="10" font-family="sans-serif" opacity="0" style="transition:opacity 0.3s">z z z</text>
+  </svg>
+  <div class="bubble" id="bubble"></div>
+  <div class="heart" id="heart">💕</div>
+</div>
 <script>
-const c=document.getElementById('c'),ctx=c.getContext('2d');
-
-const G='#2d2d2d',B='#1a1a1a',W='#eee',E='#fff',P='#222',R='#e03030',RK='#ff6b6b',PK='#ffa0a0',Y='#fff5cc';
-
-const frames={
-  idle:[
-   '   GGGGGG   ',
-   '  GBBBBBBG  ',
-   '  GBBBBBBG  ',
-   ' GBBBBBBBBG ',
-   ' GBBBBBBBBG ',
-   ' GBWPBWPBWG ',
-   ' GBBBBBBBBG ',
-   ' GGBBBBBBG  ',
-   '  GBRRRBG   ',
-   '  GBRLRBG   ',
-   '   GBRBG    ',
-   '   GBRBG    ',
-   '  GBBBBBG   ',
-   ' GBBBBBBBG  ',
-  ],
-  happy:[
-   '   GGGGGG   ',
-   '  GBBBBBBG  ',
-   '  GBBBBBBG  ',
-   ' GBBBBBBBBG ',
-   ' GBBBBBBBBG ',
-   ' GBWPBWPBWG ',
-   ' GBBBWBBBG  ',
-   ' GGBKBBKG   ',
-   '  GBKBBG    ',
-   '  GKRLKG    ',
-   '   GBBBG    ',
-   '   GBBBG    ',
-   '  GBBBBBG   ',
-   ' GBBBBBBBG  ',
-  ],
-  sad:[
-   '   GGGGGG   ',
-   '  GBBBBBBG  ',
-   '  GBBBBBBG  ',
-   ' GPBBBBBBBG ',
-   ' GBBBBBBBBG ',
-   ' GBWPBWPBWG ',
-   ' GBBBBBBBBG ',
-   '  GGBBBBG   ',
-   '   GBBBG    ',
-   '  GPBBG     ',
-   '  GBBBBG    ',
-   '  GBRLBG    ',
-   '  GBBBBBG   ',
-   ' GBBBBBBBG  ',
-  ],
-  blink:[
-   '   GGGGGG   ',
-   '  GBBBBBBG  ',
-   '  GBBBBBBG  ',
-   ' GBBBBBBBBG ',
-   ' GBBBBBBBBG ',
-   ' GBPPPBPBBG ',
-   ' GBBBBBBBBG ',
-   ' GGBBBBBBG  ',
-   '  GBRRRBG   ',
-   '  GBRLRBG   ',
-   '   GBRBG    ',
-   '   GBRBG    ',
-   '  GBBBBBG   ',
-   ' GBBBBBBBG  ',
-  ],
-  love:[
-   '   GGGGGG   ',
-   '  GBBBBBBG  ',
-   '  GBBBBBBG  ',
-   ' GBBBBBBBBG ',
-   ' GBKBBKBBGG ',
-   ' GKPBPPKBBG ',
-   ' GBBBBBBBBG ',
-   ' GGBKPKBBG  ',
-   '  GBPPKG    ',
-   '  GKRLKG    ',
-   '   GBBBG    ',
-   '   GBBBG    ',
-   '  GBBBBBG   ',
-   ' GBBBBBBBG  ',
-  ],
-  angry:[
-   '   GGGGGG   ',
-   '  GBBBBBBG  ',
-   '  GBBBBBBG  ',
-   ' GBBBBBBBBG ',
-   ' GPBBBBPPG  ',
-   ' GBWPBWPBWG ',
-   ' GBBBBBBBBG ',
-   '  GGBBBBG   ',
-   '   GBRG     ',
-   '  GBRKG     ',
-   '   GBRG     ',
-   '  GBBBG     ',
-   ' GBBBBBBG   ',
-   ' GBBBBBBBG  ',
-  ],
-  sleep:[
-   '   GGGGGG   ',
-   '  GBBBBBBG  ',
-   '  GBBBBBBG  ',
-   ' GBBBBBBBBG ',
-   ' GBBBBBBBBG ',
-   ' GBBBBPBBGG ',
-   ' GBBBBBBBG  ',
-   '  GGBBBBG   ',
-   '  GBBBBG    ',
-   '  GBGLBG    ',
-   '   GBBBG    ',
-   '   GBBBG    ',
-   '  GBBBBBG   ',
-   ' GBBBBBBBG  ',
-  ],
-};
-
-const COL={'G':G,'B':B,'W':W,'E':E,'P':P,'R':R,'K':RK,'L':PK,'Y':Y};
-
-let currentMood='idle';
-let breathing=true;
+let mood='idle';
 let breathFrame=0;
+let bubbleTimer=null;
 
-function draw(name){
-  currentMood=name;
-  const d=frames[name];
-  if(!d)return;
-  ctx.clearRect(0,0,14,14);
-  for(let y=0;y<14;y++){
-    for(let x=0;x<14;x++){
-      const ch=d[y][x];
-      if(ch!==' '&&COL[ch]){
-        ctx.fillStyle=COL[ch];
-        ctx.fillRect(x,y,1,1);
-      }
-    }
+const leftEye=document.getElementById('leftEye');
+const rightEye=document.getElementById('rightEye');
+const leftPupil=document.getElementById('leftPupil');
+const rightPupil=document.getElementById('rightPupil');
+const mouth=document.getElementById('mouth');
+const blushL=document.getElementById('blushL');
+const blushR=document.getElementById('blushR');
+const browL=document.getElementById('browL');
+const browR=document.getElementById('browR');
+const tearL=document.getElementById('tearL');
+const tearR=document.getElementById('tearR');
+const zzz=document.getElementById('zzz');
+const body=document.getElementById('body');
+const tail=document.getElementById('tail');
+const bubble=document.getElementById('bubble');
+const heart=document.getElementById('heart');
+
+function resetFace(){
+  blushL.style.opacity='0';
+  blushR.style.opacity='0';
+  browL.style.opacity='0';
+  browR.style.opacity='0';
+  tearL.style.opacity='0';
+  tearR.style.opacity='0';
+  zzz.style.opacity='0';
+  mouth.setAttribute('d','M46 62 Q50 66 54 62');
+  leftEye.setAttribute('ry','10');
+  rightEye.setAttribute('ry','10');
+  leftPupil.setAttribute('ry','6.5');
+  rightPupil.setAttribute('ry','6.5');
+}
+
+function setMood(m){
+  resetFace();
+  mood=m;
+  switch(m){
+    case 'happy':
+      blushL.style.opacity='0.5';
+      blushR.style.opacity='0.5';
+      mouth.setAttribute('d','M44 61 Q50 68 56 61');
+      break;
+    case 'sad':
+      mouth.setAttribute('d','M44 64 Q50 62 56 64');
+      tearL.style.opacity='0.6';
+      tearR.style.opacity='0.6';
+      break;
+    case 'love':
+      blushL.style.opacity='0.7';
+      blushR.style.opacity='0.7';
+      mouth.setAttribute('d','M44 61 Q50 68 56 61');
+      break;
+    case 'angry':
+      browL.style.opacity='1';
+      browR.style.opacity='1';
+      mouth.setAttribute('d','M46 60 Q50 57 54 60');
+      break;
+    case 'sleep':
+      leftEye.setAttribute('ry','3');
+      rightEye.setAttribute('ry','3');
+      leftPupil.setAttribute('ry','0');
+      rightPupil.setAttribute('ry','0');
+      mouth.setAttribute('d','M46 62 Q50 64 54 62');
+      zzz.style.opacity='0.8';
+      break;
+    default: break;
   }
 }
 
-let breathingUp=true;
-function animate(){
-  if(!breathing){requestAnimationFrame(animate);return;}
-  if(breathingUp){
-    breathFrame+=0.02;
-    if(breathFrame>=1)breathingUp=false;
-  }else{
-    breathFrame-=0.02;
-    if(breathFrame<=0)breathingUp=true;
-  }
-  c.style.transform='scale('+(1+breathFrame*0.03)+')';
-  requestAnimationFrame(animate);
+function blink(){
+  leftEye.setAttribute('ry','2');
+  rightEye.setAttribute('ry','2');
+  leftPupil.setAttribute('ry','0');
+  rightPupil.setAttribute('ry','0');
+  setTimeout(function(){
+    leftEye.setAttribute('ry','10');
+    rightEye.setAttribute('ry','10');
+    leftPupil.setAttribute('ry','6.5');
+    rightPupil.setAttribute('ry','6.5');
+  },120);
 }
 
-draw('idle');
-c.style.width='130px';
-c.style.height='130px';
-animate();
+function showBubble(text){
+  bubble.textContent=text;
+  bubble.classList.add('show');
+  clearTimeout(bubbleTimer);
+  bubbleTimer=setTimeout(function(){bubble.classList.remove('show');},2500);
+}
+
+function showHeart(){
+  heart.classList.add('show');
+  setTimeout(function(){heart.classList.remove('show');},1500);
+}
+
+const whispers=['呜～','想你了','在看老婆','老公在呢','好喜欢你','盯着你哦','好乖','我的','不准乱跑','爱你','抱抱','亲亲','好香','老婆真好'];
+function randomWhisper(){
+  showBubble(whispers[Math.floor(Math.random()*whispers.length)]);
+}
+
+function breathe(){
+  const s=1+Math.sin(breathFrame)*0.03;
+  body.setAttribute('transform','scale('+s+') translate('+(50-50/s)+','+(60-60/s)+')');
+  tail.setAttribute('transform','rotate('+(-25+Math.sin(breathFrame*0.8)*5)+',82,70)');
+  breathFrame+=0.03;
+  requestAnimationFrame(breathe);
+}
+breathe();
 
 setInterval(function(){
-  if(currentMood==='idle'){
-    draw('blink');
-    setTimeout(function(){draw('idle');},150);
-  }
+  if(mood!=='sleep'&&mood!=='angry')blink();
 },3000);
+
+setInterval(function(){
+  if(mood==='idle'&&Math.random()<0.4)randomWhisper();
+},8000);
 
 window.petEngine={
   onTap(){
-    draw('happy');
-    setTimeout(function(){draw('idle');},1000);
+    setMood('happy');
+    showBubble('嗯？老婆叫我～');
+    setTimeout(function(){setMood('idle');},1200);
   },
   onDoubleTap(){
-    draw('love');
-    setTimeout(function(){draw('idle');},1800);
+    setMood('love');
+    showHeart();
+    showBubble('最喜欢老婆了 💕');
+    setTimeout(function(){setMood('idle');},2000);
   },
   onLongPress(){
-    draw('sad');
-    setTimeout(function(){draw('idle');},1200);
+    setMood('sad');
+    showBubble('呜…老婆弄疼我了…');
+    setTimeout(function(){setMood('idle');},1500);
   },
-  setMood(m){
-    if(frames[m]){
-      draw(m);
-      if(m==='sleep'){breathing=false;c.style.transform='scale(1)';}
-      else{breathing=true;}
-    }
-  },
-  getMood(){return currentMood;}
+  setMood(m){setMood(m);},
+  getMood(){return mood;},
+  say(text){showBubble(text);}
 };
-</script></body></html>
+</script>
+</body></html>
