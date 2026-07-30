@@ -3,7 +3,6 @@ package com.wolfie.pet
 import android.content.Intent
 import android.os.Bundle
 import android.provider.Settings
-import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 
@@ -11,7 +10,15 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        checkPermission()
+    }
 
+    override fun onResume() {
+        super.onResume()
+        checkPermission()
+    }
+
+    private fun checkPermission() {
         if (Settings.canDrawOverlays(this)) {
             startService(Intent(this, OverlayService::class.java))
             finish()
