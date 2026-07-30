@@ -27,7 +27,7 @@ class OverlayService : Service() {
 
     private fun setupOverlay() {
         wm = getSystemService(WINDOW_SERVICE) as WindowManager
-        val size = dp(80)
+        val size = dp(70)
         params = WindowManager.LayoutParams(
             size, size,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
