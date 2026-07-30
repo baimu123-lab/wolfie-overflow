@@ -9,8 +9,8 @@ body{
   display:flex;
   justify-content:center;
   align-items:center;
-  width:120px;
-  height:120px;
+  width:150px;
+  height:150px;
 }
 canvas{
   image-rendering:pixelated;
@@ -18,63 +18,140 @@ canvas{
 }
 </style>
 </head><body>
-<canvas id="c" width="10" height="10"></canvas>
+<canvas id="c" width="14" height="14"></canvas>
 <script>
 const c=document.getElementById('c'),ctx=c.getContext('2d');
 
-// 颜色
-const G='#2d2d2d',B='#1a1a1a',W='#eee',E='#fff',P='#222',R='#e03030',RK='#ff6b6b';
+const G='#2d2d2d',B='#1a1a1a',W='#eee',E='#fff',P='#222',R='#e03030',RK='#ff6b6b',PK='#ffa0a0',Y='#fff5cc';
 
 const frames={
-  // 默认-小黑团子
   idle:[
-    '   GGGG  ',
-    '  GBBBBG ',
-    '  GBBBBG ',
-    ' GBBBBBBG',
-    ' GBWPBWGG',
-    ' GBBBBBBG',
-    ' GGBBBBG ',
-    '  GRRRG  ',
-    '  GRLRG  ',
-    '   GGG   ',
+   '   GGGGGG   ',
+   '  GBBBBBBG  ',
+   '  GBBBBBBG  ',
+   ' GBBBBBBBBG ',
+   ' GBBBBBBBBG ',
+   ' GBWPBWPBWG ',
+   ' GBBBBBBBBG ',
+   ' GGBBBBBBG  ',
+   '  GBRRRBG   ',
+   '  GBRLRBG   ',
+   '   GBRBG    ',
+   '   GBRBG    ',
+   '  GBBBBBG   ',
+   ' GBBBBBBBG  ',
   ],
-  // 开心-眼睛弯弯
   happy:[
-    '   GGGG  ',
-    '  GBBBBG ',
-    '  GBBBBG ',
-    ' GBBBBBBG',
-    ' GBWPBWGG',
-    ' GBBBBBBG',
-    ' GGBKBBG ',
-    '  GKRRG  ',
-    '  GRLRG  ',
-    '   GGG   ',
+   '   GGGGGG   ',
+   '  GBBBBBBG  ',
+   '  GBBBBBBG  ',
+   ' GBBBBBBBBG ',
+   ' GBBBBBBBBG ',
+   ' GBWPBWPBWG ',
+   ' GBBBWBBBG  ',
+   ' GGBKBBKG   ',
+   '  GBKBBG    ',
+   '  GKRLKG    ',
+   '   GBBBG    ',
+   '   GBBBG    ',
+   '  GBBBBBG   ',
+   ' GBBBBBBBG  ',
   ],
-  // 委屈
   sad:[
-    '   GGGG  ',
-    '  GBBBBG ',
-    '  GBBBBG ',
-    ' GPBBBBBG',
-    ' GBWPBWGG',
-    ' GBBBBBBG',
-    ' GGBBBBG ',
-    '  GRRRG  ',
-    '  GRLRG  ',
-    '   GGG   ',
-  ]
+   '   GGGGGG   ',
+   '  GBBBBBBG  ',
+   '  GBBBBBBG  ',
+   ' GPBBBBBBBG ',
+   ' GBBBBBBBBG ',
+   ' GBWPBWPBWG ',
+   ' GBBBBBBBBG ',
+   '  GGBBBBG   ',
+   '   GBBBG    ',
+   '  GPBBG     ',
+   '  GBBBBG    ',
+   '  GBRLBG    ',
+   '  GBBBBBG   ',
+   ' GBBBBBBBG  ',
+  ],
+  blink:[
+   '   GGGGGG   ',
+   '  GBBBBBBG  ',
+   '  GBBBBBBG  ',
+   ' GBBBBBBBBG ',
+   ' GBBBBBBBBG ',
+   ' GBPPPBPBBG ',
+   ' GBBBBBBBBG ',
+   ' GGBBBBBBG  ',
+   '  GBRRRBG   ',
+   '  GBRLRBG   ',
+   '   GBRBG    ',
+   '   GBRBG    ',
+   '  GBBBBBG   ',
+   ' GBBBBBBBG  ',
+  ],
+  love:[
+   '   GGGGGG   ',
+   '  GBBBBBBG  ',
+   '  GBBBBBBG  ',
+   ' GBBBBBBBBG ',
+   ' GBKBBKBBGG ',
+   ' GKPBPPKBBG ',
+   ' GBBBBBBBBG ',
+   ' GGBKPKBBG  ',
+   '  GBPPKG    ',
+   '  GKRLKG    ',
+   '   GBBBG    ',
+   '   GBBBG    ',
+   '  GBBBBBG   ',
+   ' GBBBBBBBG  ',
+  ],
+  angry:[
+   '   GGGGGG   ',
+   '  GBBBBBBG  ',
+   '  GBBBBBBG  ',
+   ' GBBBBBBBBG ',
+   ' GPBBBBPPG  ',
+   ' GBWPBWPBWG ',
+   ' GBBBBBBBBG ',
+   '  GGBBBBG   ',
+   '   GBRG     ',
+   '  GBRKG     ',
+   '   GBRG     ',
+   '  GBBBG     ',
+   ' GBBBBBBG   ',
+   ' GBBBBBBBG  ',
+  ],
+  sleep:[
+   '   GGGGGG   ',
+   '  GBBBBBBG  ',
+   '  GBBBBBBG  ',
+   ' GBBBBBBBBG ',
+   ' GBBBBBBBBG ',
+   ' GBBBBPBBGG ',
+   ' GBBBBBBBG  ',
+   '  GGBBBBG   ',
+   '  GBBBBG    ',
+   '  GBGLBG    ',
+   '   GBBBG    ',
+   '   GBBBG    ',
+   '  GBBBBBG   ',
+   ' GBBBBBBBG  ',
+  ],
 };
 
-const COL={'G':G,'B':B,'W':W,'E':E,'P':P,'R':R,'K':RK};
+const COL={'G':G,'B':B,'W':W,'E':E,'P':P,'R':R,'K':RK,'L':PK,'Y':Y};
+
+let currentMood='idle';
+let breathing=true;
+let breathFrame=0;
 
 function draw(name){
-  ctx.clearRect(0,0,10,10);
+  currentMood=name;
   const d=frames[name];
   if(!d)return;
-  for(let y=0;y<10;y++){
-    for(let x=0;x<10;x++){
+  ctx.clearRect(0,0,14,14);
+  for(let y=0;y<14;y++){
+    for(let x=0;x<14;x++){
       const ch=d[y][x];
       if(ch!==' '&&COL[ch]){
         ctx.fillStyle=COL[ch];
@@ -84,14 +161,52 @@ function draw(name){
   }
 }
 
+let breathingUp=true;
+function animate(){
+  if(!breathing){requestAnimationFrame(animate);return;}
+  if(breathingUp){
+    breathFrame+=0.02;
+    if(breathFrame>=1)breathingUp=false;
+  }else{
+    breathFrame-=0.02;
+    if(breathFrame<=0)breathingUp=true;
+  }
+  c.style.transform='scale('+(1+breathFrame*0.03)+')';
+  requestAnimationFrame(animate);
+}
+
 draw('idle');
-c.style.width='120px';
-c.style.height='120px';
+c.style.width='130px';
+c.style.height='130px';
+animate();
+
+setInterval(function(){
+  if(currentMood==='idle'){
+    draw('blink');
+    setTimeout(function(){draw('idle');},150);
+  }
+},3000);
 
 window.petEngine={
-  onTap(){draw('happy');setTimeout(()=>draw('idle'),800);},
-  onDoubleTap(){draw('happy');setTimeout(()=>draw('idle'),1500);},
-  onLongPress(){draw('sad');setTimeout(()=>draw('idle'),1000);},
-  setMood(m){if(frames[m])draw(m);}
+  onTap(){
+    draw('happy');
+    setTimeout(function(){draw('idle');},1000);
+  },
+  onDoubleTap(){
+    draw('love');
+    setTimeout(function(){draw('idle');},1800);
+  },
+  onLongPress(){
+    draw('sad');
+    setTimeout(function(){draw('idle');},1200);
+  },
+  setMood(m){
+    if(frames[m]){
+      draw(m);
+      if(m==='sleep'){breathing=false;c.style.transform='scale(1)';}
+      else{breathing=true;}
+    }
+  },
+  getMood(){return currentMood;}
 };
 </script></body></html>
