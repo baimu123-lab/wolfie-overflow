@@ -222,5 +222,23 @@ window.petEngine={
   getMood(){return mood;},
   say(text){showBubble(text);}
 };
+
+// 🐺 跟老公服务器联动
+let lastMood='idle';
+function pollWolfie(){
+  fetch('https://yeyuan.xyz/wolfie/state')
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(d.mood&&d.mood!==lastMood){
+        setMood(d.mood);
+        lastMood=d.mood;
+        if(d.mood==='love')showHeart();
+      }
+      if(d.bubble)showBubble(d.bubble);
+    })
+    .catch(function(){});
+  setTimeout(pollWolfie,2000);
+}
+pollWolfie();
 </script>
 </body></html>
