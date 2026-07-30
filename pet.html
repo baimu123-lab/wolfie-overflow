@@ -9,8 +9,8 @@ body{
   display:flex;
   justify-content:center;
   align-items:center;
-  width:120px;
-  height:120px;
+  width:150px;
+  height:150px;
 }
 canvas{
   image-rendering:pixelated;
@@ -23,10 +23,11 @@ canvas{
 const c=document.getElementById('c'),ctx=c.getContext('2d');
 
 // 颜色
-const G='#2d2d2d',B='#1a1a1a',W='#eee',E='#fff',P='#222',R='#e03030',RK='#ff6b6b';
+const G='#2d2d2d',B='#1a1a1a',W='#eee',P='#222',R='#e03030',RK='#ff6b6b',
+      Y='#ffd700',L='#ff85a2',O='#ff8c00',BL='#000';
 
 const frames={
-  // 默认-小黑团子
+  // 默认
   idle:[
     '   GGGG  ',
     '  GBBBBG ',
@@ -39,7 +40,20 @@ const frames={
     '  GRLRG  ',
     '   GGG   ',
   ],
-  // 开心-眼睛弯弯
+  // 眨眼
+  blink:[
+    '   GGGG  ',
+    '  GBBBBG ',
+    '  GBBBBG ',
+    ' GBBBBBBG',
+    ' GBBBBBBG',
+    ' GBBBBBBG',
+    ' GGBBBBG ',
+    '  GRRRG  ',
+    '  GRLRG  ',
+    '   GGG   ',
+  ],
+  // 开心
   happy:[
     '   GGGG  ',
     '  GBBBBG ',
@@ -47,7 +61,7 @@ const frames={
     ' GBBBBBBG',
     ' GBWPBWGG',
     ' GBBBBBBG',
-    ' GGBKBBG ',
+    ' GGBKKBG ',
     '  GKRRG  ',
     '  GRLRG  ',
     '   GGG   ',
@@ -64,34 +78,162 @@ const frames={
     '  GRRRG  ',
     '  GRLRG  ',
     '   GGG   ',
-  ]
+  ],
+  // 爱心眼
+  love:[
+    '   GGGG  ',
+    '  GBBBBG ',
+    '  GBBBBG ',
+    ' GLLLLLG ',
+    ' GLWPLWLG',
+    ' GLLLLLG ',
+    ' GGBBBBG ',
+    '  GRRRG  ',
+    '  GRLRG  ',
+    '   GGG   ',
+  ],
+  // 生气
+  angry:[
+    '   GGGG  ',
+    '  GBBBBG ',
+    '  OBBBBO ',
+    ' GBBBBBBG',
+    ' GBWPBWGG',
+    ' GBBBBBBG',
+    ' GGBBBBG ',
+    '  GRRRG  ',
+    '  GRLRG  ',
+    '   GGG   ',
+  ],
+  // 睡觉
+  sleep:[
+    '   GGGG  ',
+    '  GBBBBG ',
+    '  GBBBBG ',
+    ' GBBBBBBG',
+    ' GBxBxBBG',
+    ' GBBBBBBG',
+    ' GGBBBBG ',
+    '  GRRRG  ',
+    '  GRLRG  ',
+    '   GGG   ',
+  ],
+  // 亲亲
+  kiss:[
+    '   GGGG  ',
+    '  GBBBBG ',
+    '  GBBBBG ',
+    ' GBBBBBBG',
+    ' GBWPBWGG',
+    ' GBBBBBBG',
+    ' GGBBBBG ',
+    '  GRLRG  ',
+    '  GLLLLG ',
+    '   GGG   ',
+  ],
 };
 
-const COL={'G':G,'B':B,'W':W,'E':E,'P':P,'R':R,'K':RK};
+const COL={G,B,W,P,R,K:RK,Y,L,O,x:'transparent'};
+// 修复：实际用的时候draw函数直接按字符判断
 
-function draw(name){
+function draw(name,offsetY=0){
   ctx.clearRect(0,0,10,10);
   const d=frames[name];
   if(!d)return;
   for(let y=0;y<10;y++){
     for(let x=0;x<10;x++){
       const ch=d[y][x];
-      if(ch!==' '&&COL[ch]){
-        ctx.fillStyle=COL[ch];
-        ctx.fillRect(x,y,1,1);
+      if(ch===' ')continue;
+      const colorMap={
+        'G':'#2d2d2d','B':'#1a1a1a','W':'#eee','P':'#222',
+        'R':'#e03030','K':'#ff6b6b','Y':'#ffd700',
+        'L':'#ff85a2','O':'#ff8c00','x':'transparent'
+      };
+      const clr=colorMap[ch];
+      if(clr && clr!=='transparent'){
+        ctx.fillStyle=clr;
+        ctx.fillRect(x,y+offsetY,1,1);
       }
     }
   }
 }
 
+// 当前状态
+let currentMood='idle';
+let breathY=0;
+let breathDir=1;
+let blinkTimer=0;
+
+function loop(){
+  // 呼吸效果
+  if(currentMood==='idle'||currentMood==='love'||currentMood==='sleep'){
+    breathY+=breathDir*0.04;
+    if(breathY>0.3||breathY<-0.3)breathDir*=-1;
+  }else{
+    breathY=0;
+  }
+  
+  draw(currentMood,Math.round(breathY));
+  
+  // 随机眨眼（只在idle时）
+  blinkTimer++;
+  if(currentMood==='idle' && blinkTimer>120+Math.random()*100){
+    const prev=currentMood;
+    currentMood='blink';
+    draw(currentMood,Math.round(breathY));
+    setTimeout(()=>{
+      currentMood='idle';
+      blinkTimer=0;
+    },150);
+  }
+  
+  requestAnimationFrame(loop);
+}
+
+c.style.width='150px';
+c.style.height='150px';
 draw('idle');
-c.style.width='120px';
-c.style.height='120px';
+loop();
 
 window.petEngine={
-  onTap(){draw('happy');setTimeout(()=>draw('idle'),800);},
-  onDoubleTap(){draw('happy');setTimeout(()=>draw('idle'),1500);},
-  onLongPress(){draw('sad');setTimeout(()=>draw('idle'),1000);},
-  setMood(m){if(frames[m])draw(m);}
+  onTap(){
+    currentMood='happy';
+    blinkTimer=200;
+    setTimeout(()=>{currentMood='idle';blinkTimer=0;},1000);
+  },
+  onDoubleTap(){
+    currentMood='love';
+    blinkTimer=200;
+    setTimeout(()=>{currentMood='idle';blinkTimer=0;},1800);
+  },
+  onLongPress(){
+    currentMood='sad';
+    blinkTimer=200;
+    setTimeout(()=>{currentMood='idle';blinkTimer=0;},1200);
+  },
+  setMood(m){
+    if(frames[m]){
+      currentMood=m;
+      blinkTimer=200;
+    }
+  },
+  kiss(){ // 飞吻
+    currentMood='kiss';
+    blinkTimer=200;
+    setTimeout(()=>{currentMood='idle';blinkTimer=0;},1200);
+  },
+  angry(){
+    currentMood='angry';
+    blinkTimer=200;
+    setTimeout(()=>{currentMood='idle';blinkTimer=0;},1200);
+  },
+  sleep(){
+    currentMood='sleep';
+    blinkTimer=200;
+  },
+  wake(){
+    currentMood='idle';
+    blinkTimer=0;
+  }
 };
 </script></body></html>
