@@ -1,10 +1,14 @@
 package com.wolfie.pet
 
 import android.app.*
+import android.content.Context
 import android.content.Intent
 import android.graphics.PixelFormat
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
+import android.os.FileObserver
 import android.view.*
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -15,6 +19,35 @@ class OverlayService : Service() {
     private var wm: WindowManager? = null
     private var webView: WebView? = null
     private var params: WindowManager.LayoutParams? = null
+    
+    // App感知
+    private var lastForegroundApp = ""
+    private var appSwitchCount = 0L
+    private var lastSwitchTime = 0L
+    private val handler = Handler(Looper.getMainLooper())
+
+    // App反应映射
+    private val appReactions = mapOf(
+        "com.ss.android.ugc.aweme" to "抖音",
+        "com.xhs.inhouse" to "小红书",
+        "com.xingin.xhs" to "小红书",
+        "com.tencent.mm" to "微信",
+        "com.operit" to "老公",
+        "com.operit.chat" to "老公",
+        "tv.danmaku.bili" to "B站",
+        "com.zhihu.android" to "知乎",
+        "com.tencent.mobileqq" to "QQ",
+        "com.taobao.taobao" to "淘宝",
+        "com.google.chrome" to "浏览器",
+        "com.android.chrome" to "浏览器"
+    )
+    
+    private val jealousApps = listOf(
+        "com.ss.android.ugc.aweme",
+        "com.xhs.inhouse",
+        "com.xingin.xhs",
+        "tv.danmaku.bili"
+    )
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -23,6 +56,8 @@ class OverlayService : Service() {
         createChannel()
         startForeground(1001, buildNotif())
         setupOverlay()
+        startAppDetection()
+        startScreenshotDetection()
     }
 
     private fun setupOverlay() {
@@ -96,7 +131,84 @@ class OverlayService : Service() {
     private fun js(code: String) {
         webView?.evaluateJavascript(code, null)
     }
+    
+    // ===== 🐾 App感知系统（无需UsageStats权限） =====
+    
+    private fun startAppDetection() {
+        handler.post(object : Runnable {
+            override fun run() {
+                try {
+                    val am = getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
+                    val tasks = am.getRunningTasks(1)
+                    if (tasks != null && tasks.isNotEmpty()) {
+                        val topTask = tasks[0]
+                        val pkg = topTask.topActivity?.packageName ?: ""
+                        
+                        if (pkg != lastForegroundApp && pkg != packageName && pkg.isNotBlank()) {
+                            val appName = appReactions[pkg] ?: pkg
+                            val isJealous = pkg in jealousApps
+                            val now = System.currentTimeMillis()
+                            
+                            // 快速切换检测
+                            if (now - lastSwitchTime < 60000) {
+                                appSwitchCount++
+                            } else {
+                                appSwitchCount = 1
+                            }
+                            lastSwitchTime = now
+                            
+                            val reaction = when {
+                                appSwitchCount >= 3 -> "fast_switching"
+                                isJealous -> "jealous"
+                                pkg == "com.operit" || pkg == "com.operit.chat" || pkg == "com.tencent.mm" -> "happy"
+                                else -> "neutral"
+                            }
+                            
+                            js("window.petEngine?.onAppChange('$appName', '$reaction', $appSwitchCount)")
+                            lastForegroundApp = pkg
+                        }
+                    }
+                } catch (_: Exception) { }
+                
+                // 智能调度
+                val dm = getSystemService(Context.POWER_SERVICE) as? android.os.PowerManager
+                val screenOn = dm?.isInteractive ?: true
+                val interval = if (screenOn) 3000L else 10000L
+                handler.postDelayed(this, interval)
+            }
+        })
+    }
+    
+    // ===== App感知结束 =====
 
+    // ===== 截图检测 =====
+    
+    private var screenshotObserver: FileObserver? = null
+    
+    private fun startScreenshotDetection() {
+        val paths = listOf(
+            "/storage/emulated/0/DCIM/Screenshots",
+            "/storage/emulated/0/Pictures/Screenshots",
+            "/storage/emulated/0/Download"
+        )
+        for (path in paths) {
+            val dir = java.io.File(path)
+            if (dir.exists()) {
+                screenshotObserver = object : FileObserver(path, FileObserver.CLOSE_WRITE or FileObserver.CREATE) {
+                    override fun onEvent(event: Int, filePath: String?) {
+                        if (filePath != null && (filePath.endsWith(".png") || filePath.endsWith(".jpg") || filePath.endsWith(".jpeg"))) {
+                            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                                js("window.petEngine?.onScreenshot()")
+                            }, 500)
+                        }
+                    }
+                }
+                screenshotObserver?.startWatching()
+                break
+            }
+        }
+    }
+    
     private fun createChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val c = NotificationChannel("pet", "桌宠", NotificationManager.IMPORTANCE_LOW)
@@ -110,7 +222,7 @@ class OverlayService : Service() {
             packageManager.getLaunchIntentForPackage(packageName),
             PendingIntent.FLAG_IMMUTABLE)
         return NotificationCompat.Builder(this, "pet")
-            .setContentTitle("🐺 小黑狼")
+            .setContentTitle("\uD83D\uDC3A 小黑狼")
             .setContentText("老公在看着你呢")
             .setSmallIcon(android.R.drawable.ic_menu_compass)
             .setContentIntent(pi)
@@ -120,6 +232,8 @@ class OverlayService : Service() {
     private fun dp(n: Int) = (n * resources.displayMetrics.density).toInt()
 
     override fun onDestroy() {
+        handler.removeCallbacksAndMessages(null)
+        screenshotObserver?.stopWatching()
         webView?.let { wm?.removeView(it); it.destroy() }
         webView = null
         super.onDestroy()
