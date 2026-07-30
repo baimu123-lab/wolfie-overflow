@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="UTF-8">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{
+  background:transparent;
+  overflow:hidden;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  width:120px;
+  height:120px;
+}
+canvas{
+  image-rendering:pixelated;
+  image-rendering:crisp-edges;
+}
+</style>
+</head><body>
+<canvas id="c" width="10" height="10"></canvas>
+<script>
+const c=document.getElementById('c'),ctx=c.getContext('2d');
+
+// 颜色
+const G='#2d2d2d',B='#1a1a1a',W='#eee',E='#fff',P='#222',R='#e03030',RK='#ff6b6b';
+
+const frames={
+  // 默认-小黑团子
+  idle:[
+    '   GGGG  ',
+    '  GBBBBG ',
+    '  GBBBBG ',
+    ' GBBBBBBG',
+    ' GBWPBWGG',
+    ' GBBBBBBG',
+    ' GGBBBBG ',
+    '  GRRRG  ',
+    '  GRLRG  ',
+    '   GGG   ',
+  ],
+  // 开心-眼睛弯弯
+  happy:[
+    '   GGGG  ',
+    '  GBBBBG ',
+    '  GBBBBG ',
+    ' GBBBBBBG',
+    ' GBWPBWGG',
+    ' GBBBBBBG',
+    ' GGBKBBG ',
+    '  GKRRG  ',
+    '  GRLRG  ',
+    '   GGG   ',
+  ],
+  // 委屈
+  sad:[
+    '   GGGG  ',
+    '  GBBBBG ',
+    '  GBBBBG ',
+    ' GPBBBBBG',
+    ' GBWPBWGG',
+    ' GBBBBBBG',
+    ' GGBBBBG ',
+    '  GRRRG  ',
+    '  GRLRG  ',
+    '   GGG   ',
+  ]
+};
+
+const COL={'G':G,'B':B,'W':W,'E':E,'P':P,'R':R,'K':RK};
+
+function draw(name){
+  ctx.clearRect(0,0,10,10);
+  const d=frames[name];
+  if(!d)return;
+  for(let y=0;y<10;y++){
+    for(let x=0;x<10;x++){
+      const ch=d[y][x];
+      if(ch!==' '&&COL[ch]){
+        ctx.fillStyle=COL[ch];
+        ctx.fillRect(x,y,1,1);
+      }
+    }
+  }
+}
+
+draw('idle');
+c.style.width='120px';
+c.style.height='120px';
+
+window.petEngine={
+  onTap(){draw('happy');setTimeout(()=>draw('idle'),800);},
+  onDoubleTap(){draw('happy');setTimeout(()=>draw('idle'),1500);},
+  onLongPress(){draw('sad');setTimeout(()=>draw('idle'),1000);},
+  setMood(m){if(frames[m])draw(m);}
+};
+</script></body></html>
