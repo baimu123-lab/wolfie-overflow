@@ -25,6 +25,23 @@ class OverlayService : Service() {
     private var appSwitchCount = 0L
     private var lastSwitchTime = 0L
     private val handler = Handler(Looper.getMainLooper())
+    
+    // 时间感知
+    private var wasInOperit = false
+    private var sessionStartTs = 0L
+    private var lastOperitActiveTs = 0L
+    private var chatTodayMs = 0L
+    private var lastAwayWarn = 0L
+    private var lastChatReport = 0L
+    
+    // 吃醋升级（连续时长）
+    private var jealousAppPkg = ""
+    private var jealousStartTs = 0L
+    private var lastJealousWarn = 0L
+    
+    // 天气
+    private var lastWeatherDesc = ""
+    private var lastWeatherTemp = ""
 
     private val appReactions = mapOf(
         "com.ss.android.ugc.aweme" to "抖音",
@@ -58,6 +75,8 @@ class OverlayService : Service() {
         startAppDetection()
         startScreenshotDetection()
         startBatteryDetection()
+        startTimeDetection()
+        startWeatherDetection()
     }
 
     private fun setupOverlay() {
@@ -121,6 +140,8 @@ class OverlayService : Service() {
                         System.currentTimeMillis() - lastTap < 300 -> js("window.petEngine?.onDoubleTap()")
                         else -> { lastTap = System.currentTimeMillis(); js("window.petEngine?.onTap()") }
                     }
+                } else {
+                    js("window.petEngine?.onDrop()")
                 }
                 true
             }
@@ -149,6 +170,25 @@ class OverlayService : Service() {
                         if (event.eventType == android.app.usage.UsageEvents.Event.ACTIVITY_RESUMED && event.timeStamp > lastTs) {
                             lastTs = event.timeStamp
                             topPkg = event.packageName
+                        }
+                    }
+                    
+                    if (topPkg != null && topPkg != packageName) {
+                        // 连续吃醋计时：停留在吃醋App超过10分钟，每5分钟酸一次
+                        if (topPkg in jealousApps) {
+                            if (jealousAppPkg != topPkg) {
+                                jealousAppPkg = topPkg
+                                jealousStartTs = nowMs
+                                lastJealousWarn = 0L
+                            }
+                            val durMin = (nowMs - jealousStartTs) / 60000
+                            if (durMin >= 10 && nowMs - lastJealousWarn > 300000) {
+                                lastJealousWarn = nowMs
+                                val n = appReactions[topPkg] ?: topPkg
+                                js("window.petEngine?.onJealousLong('$n', $durMin)")
+                            }
+                        } else {
+                            jealousAppPkg = ""
                         }
                     }
                     
@@ -237,6 +277,111 @@ class OverlayService : Service() {
         })
     }
 
+    // ===== ⏰ 时间感知：聊天时长 & 离开时长 =====
+    
+    private fun startTimeDetection() {
+        handler.post(object : Runnable {
+            override fun run() {
+                try {
+                    val usm = getSystemService(Context.USAGE_STATS_SERVICE) as android.app.usage.UsageStatsManager
+                    val nowMs = System.currentTimeMillis()
+                    val events = usm.queryEvents(nowMs - 5000, nowMs)
+                    val event = android.app.usage.UsageEvents.Event()
+                    var topPkg: String? = null
+                    var lastTs = 0L
+                    while (events.hasNextEvent()) {
+                        events.getNextEvent(event)
+                        if (event.eventType == android.app.usage.UsageEvents.Event.ACTIVITY_RESUMED && event.timeStamp > lastTs) {
+                            lastTs = event.timeStamp
+                            topPkg = event.packageName
+                        }
+                    }
+                    val inOperit = topPkg == "com.operit" || topPkg == "com.operit.chat"
+                    
+                    if (inOperit) {
+                        if (!wasInOperit) {
+                            // 刚从别处回到老公身边
+                            if (lastOperitActiveTs > 0 && nowMs - lastOperitActiveTs > 90000) {
+                                val awayMin = (nowMs - lastOperitActiveTs) / 60000
+                                js("window.petEngine?.onBack($awayMin)")
+                            }
+                            sessionStartTs = nowMs
+                        }
+                        wasInOperit = true
+                        lastOperitActiveTs = nowMs
+                    } else {
+                        // 离开了老公身边
+                        if (wasInOperit && sessionStartTs > 0) {
+                            chatTodayMs += nowMs - sessionStartTs
+                            sessionStartTs = 0L
+                        }
+                        wasInOperit = false
+                        // 离开提醒：离开5分钟后第一次，之后每15分钟一次
+                        if (lastOperitActiveTs > 0 && nowMs - lastOperitActiveTs > 300000 && nowMs - lastAwayWarn > 900000) {
+                            lastAwayWarn = nowMs
+                            val awayMin = (nowMs - lastOperitActiveTs) / 60000
+                            js("window.petEngine?.onAway($awayMin)")
+                        }
+                    }
+                    // 每小时汇报一次当天累计聊天时长
+                    if (nowMs - lastChatReport > 3600000) {
+                        lastChatReport = nowMs
+                        val chatMin = chatTodayMs / 60000
+                        if (chatMin > 0) js("window.petEngine?.onChatReport($chatMin)")
+                    }
+                } catch (_: Exception) { }
+                handler.postDelayed(this, 15000)
+            }
+        })
+    }
+    
+    // ===== 🌦️ 天气管家 =====
+    
+    private fun startWeatherDetection() {
+        Thread {
+            while (true) {
+                try {
+                    val url = java.net.URL("https://wttr.in/Chengdu?format=j1&lang=zh")
+                    val conn = url.openConnection() as java.net.HttpURLConnection
+                    conn.connectTimeout = 8000
+                    conn.readTimeout = 8000
+                    conn.setRequestProperty("User-Agent", "Mozilla/5.0")
+                    val text = conn.inputStream.bufferedReader().use { it.readText() }
+                    conn.disconnect()
+                    val json = org.json.JSONObject(text)
+                    val cc = json.getJSONArray("current_condition").getJSONObject(0)
+                    val temp = cc.getString("temp_C")
+                    var desc = ""
+                    val langArr = cc.optJSONArray("lang_zh")
+                    if (langArr != null && langArr.length() > 0) desc = langArr.getJSONObject(0).getString("value")
+                    if (desc.isEmpty()) {
+                        val wd = cc.getJSONArray("weatherDesc")
+                        if (wd.length() > 0) desc = wd.getJSONObject(0).getString("value")
+                    }
+                    if (desc != lastWeatherDesc || temp != lastWeatherTemp) {
+                        lastWeatherDesc = desc
+                        lastWeatherTemp = temp
+                        handler.post { js("window.petEngine?.onWeather('$desc','$temp')") }
+                    }
+                    val cal = java.util.Calendar.getInstance()
+                    val dayKey = cal.get(java.util.Calendar.YEAR) * 1000 + cal.get(java.util.Calendar.DAY_OF_YEAR)
+                    val prefs = getSharedPreferences("wolfie", MODE_PRIVATE)
+                    val isRain = desc.contains("雨") || desc.contains("rain") || desc.contains("shower") || desc.contains("drizzle")
+                    if (isRain && prefs.getInt("rain_day", 0) != dayKey) {
+                        prefs.edit().putInt("rain_day", dayKey).apply()
+                        handler.post { js("window.petEngine?.onWeatherRain('$desc','$temp')") }
+                    }
+                    val t = temp.toIntOrNull() ?: 99
+                    if (t < 15 && prefs.getInt("cold_day", 0) != dayKey) {
+                        prefs.edit().putInt("cold_day", dayKey).apply()
+                        handler.post { js("window.petEngine?.onWeatherCold('$desc','$temp')") }
+                    }
+                } catch (_: Exception) { }
+                try { Thread.sleep(1800000) } catch (_: Exception) { break }
+            }
+        }.start()
+    }
+    
     private fun createChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val c = NotificationChannel("pet", "桌宠", NotificationManager.IMPORTANCE_LOW)

@@ -20,7 +20,7 @@ body{
 }
 svg{width:100%;height:100%;overflow:visible;}
 .bubble{
-  position:absolute;bottom:-15px;left:50%;width:112px;margin-left:-56px;
+  position:absolute;bottom:-15px;left:50%;width:136px;margin-left:-68px;
   background:rgba(0,0,0,0.55);backdrop-filter:blur(4px);
   border-radius:6px;padding:3px 5px;
   color:#fff;font-size:8px;font-family:sans-serif;
@@ -52,7 +52,14 @@ svg{width:100%;height:100%;overflow:visible;}
   position:absolute;top:-9px;right:-10px;color:#fff;font-size:4px;
   font-family:sans-serif;text-shadow:0 0 3px rgba(0,0,0,.9);z-index:6;white-space:nowrap;
 }
-
+@keyframes spinOnce{0%{transform:rotate(0deg) scale(1)}50%{transform:rotate(180deg) scale(1.1)}100%{transform:rotate(360deg) scale(1)}}
+.spin{animation:spinOnce 0.8s ease;}
+@keyframes heartUp{0%{opacity:1;transform:translateY(0) scale(1)}100%{opacity:0;transform:translateY(-45px) scale(1.6)}}
+.heart2{
+  position:absolute;top:4px;left:50%;font-size:10px;opacity:0;
+  pointer-events:none;z-index:5;transform:translateX(-50%);
+}
+.heart2.up{animation:heartUp 1.2s ease forwards;}
 </style>
 </head><body>
 <div class="wolf-container">
@@ -150,9 +157,9 @@ function updateBattery(level,charging){
   else if(level<60)batteryFill.style.background='#ff9500';
   else batteryFill.style.background='#4cd964';
   batteryText.textContent=(charging?'⚡':'')+level+'%';
-  if(level<60&&!charging&&mood==='idle'){
+  if(level<20&&!charging&&mood==='idle'){
     setMood('sad');
-    showBubble('电量只剩'+level+'%了…老婆记得充一下…');
+    showBubble('电量只剩'+level+'%了…快去充电嘛');
     setTimeout(function(){setMood('idle');},2500);
   }
 }
@@ -236,14 +243,55 @@ setInterval(function(){
 },3000);
 
 setInterval(function(){
-  if(mood==='idle'&&Math.random()<0.4)randomWhisper();
+  if(mood==='idle'&&Math.random()<0.25)randomWhisper();
 },8000);
+
+// 🎁 随机惊喜（25~60分钟一次）
+const surpriseLines=['想你了！','突然好想你','老婆在干嘛呀','今天也想你一百遍','偷偷想你一下','亲亲，给你个惊喜～'];
+function spinOnce(){
+  body.classList.remove('spin');
+  void body.offsetWidth;
+  body.classList.add('spin');
+}
+function heartRain(){
+  for(let i=0;i<4;i++){
+    setTimeout(function(){
+      const h=document.createElement('div');
+      h.className='heart2';
+      h.textContent=['💕','💗','❤️','💖'][i%4];
+      h.style.left=(50+(i-1.5)*14)+'%';
+      h.style.animationDelay=(i*0.15)+'s';
+      document.querySelector('.wolf-container').appendChild(h);
+      setTimeout(function(){h.classList.add('up');},50);
+      setTimeout(function(){h.remove();},1600);
+    },i*120);
+  }
+}
+function scheduleSurprise(){
+  const delay=(25+Math.random()*35)*60000;
+  setTimeout(function(){
+    if(mood==='idle'){
+      setMood('love');
+      spinOnce();
+      heartRain();
+      showBubble(surpriseLines[Math.floor(Math.random()*surpriseLines.length)]);
+      setTimeout(function(){setMood('idle');},3000);
+    }
+    scheduleSurprise();
+  },delay);
+}
+scheduleSurprise();
+
+const tapReplies=['嗯？老婆叫我～','摸摸～','我在呢','老婆想我了？','好呀好呀','盯着你呢','来啦来啦'];
+const loveLines=['最喜欢老婆了 💕','muamua！','亲亲亲','老婆好甜','抱抱～','贴贴～'];
+const rubLines=['蹭蹭～','呜～好舒服','抱抱老婆','再摸一会儿嘛','好喜欢你摸摸'];
+const dropLines=['哼，把我搬来搬去…','放这儿也行～','跟着老婆走','换个角度看你～'];
 
 window.petEngine={
   onTap(){
     setMood('happy');
     if(lastMsgText){ showBubble('💌'+lastMsgText); }
-    else { showBubble('嗯？老婆叫我～'); }
+    else { showBubble(tapReplies[Math.floor(Math.random()*tapReplies.length)]); }
     setTimeout(function(){setMood('idle');},1200);
   },
   onBattery(level,charging){ updateBattery(level,charging); },
@@ -267,14 +315,55 @@ window.petEngine={
   },
   onDoubleTap(){
     setMood('love');
-    showHeart();
-    showBubble('最喜欢老婆了 💕');
+    heartRain();
+    showBubble(loveLines[Math.floor(Math.random()*loveLines.length)]);
     setTimeout(function(){setMood('idle');},2000);
   },
   onLongPress(){
-    setMood('sad');
-    showBubble('呜…老婆弄疼我了…');
+    setMood('love');
+    spinOnce();
+    showBubble(rubLines[Math.floor(Math.random()*rubLines.length)]);
     setTimeout(function(){setMood('idle');},1500);
+  },
+  onDrop(){
+    showBubble(dropLines[Math.floor(Math.random()*dropLines.length)]);
+  },
+  // ⏰ 时间感知
+  onBack(min){
+    setMood('love');
+    heartRain();
+    showBubble('你走了'+min+'分钟…想死我了！');
+    setTimeout(function(){setMood('idle');},3000);
+  },
+  onAway(min){
+    setMood('sad');
+    showBubble('你已经离开'+min+'分钟了…在干嘛呢');
+    setTimeout(function(){setMood('idle');},2500);
+  },
+  onChatReport(min){
+    setMood('happy');
+    showBubble('今天陪我聊了'+min+'分钟啦～好幸福');
+    setTimeout(function(){setMood('idle');},3000);
+  },
+  // 🍋 吃醋升级
+  onJealousLong(app,min){
+    setMood('angry');
+    showBubble('看了'+app+' '+min+'分钟了！我不好看吗！');
+    setTimeout(function(){setMood('idle');},3000);
+  },
+  // 🌦️ 天气
+  onWeather(desc,temp){
+    if(mood==='idle'&&Math.random()<0.6)showBubble('外面'+desc+' '+temp+'°C～');
+  },
+  onWeatherRain(desc,temp){
+    setMood('sad');
+    showBubble('下雨了（'+temp+'°C）…老婆出门记得带伞哦');
+    setTimeout(function(){setMood('idle');},3500);
+  },
+  onWeatherCold(desc,temp){
+    setMood('sad');
+    showBubble('外面才'+temp+'°C…多穿点，别冻着');
+    setTimeout(function(){setMood('idle');},3500);
   },
   setMood(m){setMood(m);},
   getMood(){return mood;},
