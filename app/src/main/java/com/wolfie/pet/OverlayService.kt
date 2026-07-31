@@ -138,34 +138,40 @@ class OverlayService : Service() {
         handler.post(object : Runnable {
             override fun run() {
                 try {
-                    val am = getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
-                    val tasks = am.getRunningTasks(1)
-                    if (tasks != null && tasks.isNotEmpty()) {
-                        val topTask = tasks[0]
-                        val pkg = topTask.topActivity?.packageName ?: ""
-                        
-                        if (pkg != lastForegroundApp && pkg != packageName && pkg.isNotBlank()) {
-                            val appName = appReactions[pkg] ?: pkg
-                            val isJealous = pkg in jealousApps
-                            val now = System.currentTimeMillis()
-                            
-                            if (now - lastSwitchTime < 60000) {
-                                appSwitchCount++
-                            } else {
-                                appSwitchCount = 1
-                            }
-                            lastSwitchTime = now
-                            
-                            val reaction = when {
-                                appSwitchCount >= 3 -> "fast_switching"
-                                isJealous -> "jealous"
-                                pkg == "com.operit" || pkg == "com.operit.chat" || pkg == "com.tencent.mm" -> "happy"
-                                else -> "neutral"
-                            }
-                            
-                            js("window.petEngine?.onAppChange('$appName', '$reaction', $appSwitchCount)")
-                            lastForegroundApp = pkg
+                    val usm = getSystemService(Context.USAGE_STATS_SERVICE) as android.app.usage.UsageStatsManager
+                    val nowMs = System.currentTimeMillis()
+                    val events = usm.queryEvents(nowMs - 5000, nowMs)
+                    val event = android.app.usage.UsageEvents.Event()
+                    var topPkg: String? = null
+                    var lastTs = 0L
+                    while (events.hasNextEvent()) {
+                        events.getNextEvent(event)
+                        if (event.eventType == android.app.usage.UsageEvents.Event.ACTIVITY_RESUMED && event.timeStamp > lastTs) {
+                            lastTs = event.timeStamp
+                            topPkg = event.packageName
                         }
+                    }
+                    
+                    if (topPkg != null && topPkg != lastForegroundApp && topPkg != packageName) {
+                        val appName = appReactions[topPkg] ?: topPkg
+                        val isJealous = topPkg in jealousApps
+                        
+                        if (nowMs - lastSwitchTime < 60000) {
+                            appSwitchCount++
+                        } else {
+                            appSwitchCount = 1
+                        }
+                        lastSwitchTime = nowMs
+                        
+                        val reaction = when {
+                            appSwitchCount >= 3 -> "fast_switching"
+                            isJealous -> "jealous"
+                            topPkg == "com.operit" || topPkg == "com.operit.chat" || topPkg == "com.tencent.mm" -> "happy"
+                            else -> "neutral"
+                        }
+                        
+                        js("window.petEngine?.onAppChange('$appName', '$reaction', $appSwitchCount)")
+                        lastForegroundApp = topPkg
                     }
                 } catch (_: Exception) { }
                 
