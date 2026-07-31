@@ -283,6 +283,7 @@ window.petEngine={
 
 // 🐺 跟老公服务器联动
 let lastMood='idle';
+let lastBubble='';
 function pollWolfie(){
   fetch('https://yeyuan.xyz/wolfie/state')
     .then(function(r){return r.json();})
@@ -292,7 +293,11 @@ function pollWolfie(){
         lastMood=d.mood;
         if(d.mood==='love')showHeart();
       }
-      if(d.bubble)showBubble(d.bubble);
+      if(d.bubble&&d.bubble!==lastBubble){
+        lastBubble=d.bubble;
+        showBubble(d.bubble);
+        fetch('https://yeyuan.xyz/wolfie/state',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({bubble:''})}).catch(function(){});
+      }
     })
     .catch(function(){});
   setTimeout(pollWolfie,2000);
