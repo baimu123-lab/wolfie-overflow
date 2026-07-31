@@ -57,6 +57,7 @@ class OverlayService : Service() {
         setupOverlay()
         startAppDetection()
         startScreenshotDetection()
+        startBatteryDetection()
     }
 
     private fun setupOverlay() {
@@ -206,6 +207,30 @@ class OverlayService : Service() {
         }
     }
     
+    // ===== 🔋 电量感知 =====
+    private var lastBatteryLevel = -1
+    private var lastCharging = false
+
+    private fun startBatteryDetection() {
+        handler.post(object : Runnable {
+            override fun run() {
+                try {
+                    val bm = getSystemService(Context.BATTERY_SERVICE) as? android.os.BatteryManager
+                    if (bm != null) {
+                        val level = bm.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_CAPACITY)
+                        val charging = bm.isCharging
+                        if (level != lastBatteryLevel || charging != lastCharging) {
+                            lastBatteryLevel = level
+                            lastCharging = charging
+                            js("window.petEngine?.onBattery($level, $charging)")
+                        }
+                    }
+                } catch (_: Exception) { }
+                handler.postDelayed(this, 10000)
+            }
+        })
+    }
+
     private fun createChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val c = NotificationChannel("pet", "桌宠", NotificationManager.IMPORTANCE_LOW)
