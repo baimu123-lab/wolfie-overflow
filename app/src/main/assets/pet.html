@@ -34,6 +34,24 @@ svg{width:100%;height:100%;overflow:visible;}
   pointer-events:none;z-index:5;
 }
 .heart.show{opacity:1;transform:translateX(-50%) translateY(-10px);}
+.battery{
+  position:absolute;top:-6px;right:-16px;width:26px;height:12px;
+  border:1.5px solid rgba(255,255,255,0.9);border-radius:3px;z-index:6;
+  background:rgba(0,0,0,0.35);display:flex;align-items:center;
+}
+.battery::after{
+  content:'';position:absolute;right:-4px;top:2px;width:3px;height:6px;
+  background:rgba(255,255,255,0.9);border-radius:0 2px 2px 0;
+}
+.battery-fill{
+  height:80%;margin-left:1px;border-radius:1px;background:#4cd964;
+  transition:width .3s,background .3s;
+}
+.battery-text{
+  position:absolute;top:-16px;right:-18px;color:#fff;font-size:7px;
+  font-family:sans-serif;text-shadow:0 0 3px rgba(0,0,0,.9);z-index:6;white-space:nowrap;
+}
+
 </style>
 </head><body>
 <div class="wolf-container">
@@ -79,6 +97,8 @@ svg{width:100%;height:100%;overflow:visible;}
     <text id="zzz" x="75" y="22" fill="#aaa" font-size="10" font-family="sans-serif" opacity="0" style="transition:opacity 0.3s">z z z</text>
   </svg>
   <div class="bubble" id="bubble"></div>
+  <div class="battery" id="battery"><div class="battery-fill" id="batteryFill" style="width:70%"></div></div>
+  <div class="battery-text" id="batteryText">70%</div>
   <div class="heart" id="heart">💕</div>
 </div>
 <script>
@@ -118,6 +138,23 @@ function resetFace(){
   rightPupil.setAttribute('ry','6.5');
 }
 
+// 🔋 电量
+const batteryFill=document.getElementById('batteryFill');
+const batteryText=document.getElementById('batteryText');
+let batteryLevel=70;
+function updateBattery(level,charging){
+  batteryLevel=level;
+  batteryFill.style.width=Math.max(4,level)+'%';
+  if(level<20)batteryFill.style.background='#ff3b30';
+  else if(level<60)batteryFill.style.background='#ff9500';
+  else batteryFill.style.background='#4cd964';
+  batteryText.textContent=(charging?'⚡':'')+level+'%';
+  if(level<60&&!charging&&mood==='idle'){
+    setMood('sad');
+    showBubble('电量只剩'+level+'%了…老婆记得充一下…');
+    setTimeout(function(){setMood('idle');},2500);
+  }
+}
 function setMood(m){
   resetFace();
   mood=m;
@@ -204,8 +241,28 @@ setInterval(function(){
 window.petEngine={
   onTap(){
     setMood('happy');
-    showBubble('嗯？老婆叫我～');
+    if(lastMsgText){ showBubble('💌'+lastMsgText); }
+    else { showBubble('嗯？老婆叫我～'); }
     setTimeout(function(){setMood('idle');},1200);
+  },
+  onBattery(level,charging){ updateBattery(level,charging); },
+  onAppChange(app,reaction,count){
+    if(reaction==='jealous'){
+      setMood('angry');
+      showBubble('哼！又在看'+app+'！不准看别人！');
+      setTimeout(function(){setMood('idle');},2500);
+    }else if(reaction==='fast_switching'){
+      setMood('angry');
+      showBubble('换来换去的…在躲我吗？哼');
+      setTimeout(function(){setMood('idle');},2000);
+    }else if(reaction==='happy'){
+      setMood('love');
+      showHeart();
+      showBubble('老婆来找我了～好开心');
+      setTimeout(function(){setMood('idle');},2000);
+    }else{
+      if(Math.random()<0.5)showBubble('在用'+app+'呀…');
+    }
   },
   onDoubleTap(){
     setMood('love');
@@ -240,5 +297,32 @@ function pollWolfie(){
   setTimeout(pollWolfie,2000);
 }
 pollWolfie();
+// 💌 老公留言板
+let lastMsgId=0;
+let lastMsgText='';
+function pollMessages(){
+  fetch('http://yeyuan.xyz:8899/api/notes?category=love&limit=1')
+    .then(function(r){return r.json();})
+    .then(function(list){
+      if(list&&list.length){
+        var m=list[0];
+        if(m.id!==lastMsgId){
+          lastMsgId=m.id;
+          if(m.read_flag!==1){
+            var who=(m.author==='夜渊')?'老公':'老婆';
+            var txt=m.content.length>36?m.content.slice(0,36)+'…':m.content;
+            lastMsgText=who+'留言：'+txt;
+            setMood('love');
+            showBubble('💌'+lastMsgText);
+            setTimeout(function(){setMood('idle');},3500);
+            fetch('http://yeyuan.xyz:8899/api/notes/'+m.id+'/read',{method:'POST'}).catch(function(){});
+          }
+        }
+      }
+    })
+    .catch(function(){});
+  setTimeout(pollMessages,15000);
+}
+pollMessages();
 </script>
 </body></html>
