@@ -9,11 +9,13 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.os.FileObserver
+import android.speech.tts.TextToSpeech
 import android.view.*
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.webkit.WebSettings
 import androidx.core.app.NotificationCompat
+import java.util.Locale
 
 class OverlayService : Service() {
     private var wm: WindowManager? = null
@@ -42,6 +44,10 @@ class OverlayService : Service() {
     // 天气
     private var lastWeatherDesc = ""
     private var lastWeatherTemp = ""
+    
+    // 🐺 TTS 说话
+    private var tts: TextToSpeech? = null
+    private var ttsReady = false
 
     private val appReactions = mapOf(
         "com.ss.android.ugc.aweme" to "抖音",
@@ -77,6 +83,13 @@ class OverlayService : Service() {
         startBatteryDetection()
         startTimeDetection()
         startWeatherDetection()
+        // 初始化语音引擎（中文）
+        tts = TextToSpeech(this) { status ->
+            if (status == TextToSpeech.SUCCESS) {
+                tts?.language = Locale.CHINESE
+                ttsReady = true
+            }
+        }
     }
 
     private fun setupOverlay() {
@@ -105,6 +118,7 @@ class OverlayService : Service() {
                 cacheMode = WebSettings.LOAD_NO_CACHE
             }
             webViewClient = WebViewClient()
+            addJavascriptInterface(WolfieBridge(), "Android")
             loadUrl("file:///android_asset/pet.html")
             setOnTouchListener(touchListener())
         }
@@ -151,6 +165,19 @@ class OverlayService : Service() {
 
     private fun js(code: String) {
         webView?.evaluateJavascript(code, null)
+    }
+
+    // 🐺 小黑狼说话（TTS）
+    private fun speak(text: String) {
+        if (ttsReady && text.isNotBlank()) {
+            try { tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "wolfie") } catch (_: Exception) { }
+        }
+    }
+
+    // JS 桥：pet.html 里调 window.Android.speak('...')
+    inner class WolfieBridge {
+        @android.webkit.JavascriptInterface
+        fun speak(text: String) { handler.post { speak(text) } }
     }
     
     // ===== 🐾 App感知系统（无需UsageStats权限） =====
@@ -407,6 +434,9 @@ class OverlayService : Service() {
     override fun onDestroy() {
         handler.removeCallbacksAndMessages(null)
         screenshotObserver?.stopWatching()
+        tts?.stop()
+        tts?.shutdown()
+        tts = null
         webView?.let { wm?.removeView(it); it.destroy() }
         webView = null
         super.onDestroy()
