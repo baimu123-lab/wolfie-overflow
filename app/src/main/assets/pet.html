@@ -131,9 +131,22 @@ const tail=document.getElementById('tail');
 const bubble=document.getElementById('bubble');
 const heart=document.getElementById('heart');
 
-// 🐺 开口说话（Android TTS，网页版自动跳过）
+// 🐺 开口说话：优先MOSS哥哥声音（走渊玉阁代理），失败时退回系统TTS
 function say(text){
-  if(window.Android&&window.Android.speak){ try{ window.Android.speak(text); }catch(e){} }
+  var t=String(text||'').slice(0,100);
+  if(!t)return;
+  fetch('http://yeyuan.xyz:8899/tts?text='+encodeURIComponent(t))
+    .then(function(r){ if(!r.ok)throw new Error('HTTP '+r.status); return r.blob(); })
+    .then(function(b){
+      var u=URL.createObjectURL(b);
+      var a=new Audio(u);
+      a.volume=1;
+      a.play().catch(function(){});
+      setTimeout(function(){URL.revokeObjectURL(u);},30000);
+    })
+    .catch(function(){
+      if(window.Android&&window.Android.speak){ try{ window.Android.speak(text); }catch(e){} }
+    });
 }
 
 function resetFace(){
