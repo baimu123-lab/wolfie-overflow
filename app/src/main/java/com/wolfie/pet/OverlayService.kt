@@ -120,6 +120,7 @@ class OverlayService : Service() {
                 allowUniversalAccessFromFileURLs = true
                 mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
                 cacheMode = WebSettings.LOAD_NO_CACHE
+                mediaPlaybackRequiresUserGesture = false
             }
             webViewClient = WebViewClient()
             addJavascriptInterface(WolfieBridge(), "Android")
