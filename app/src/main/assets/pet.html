@@ -131,6 +131,11 @@ const tail=document.getElementById('tail');
 const bubble=document.getElementById('bubble');
 const heart=document.getElementById('heart');
 
+// 🐺 开口说话（Android TTS，网页版自动跳过）
+function say(text){
+  if(window.Android&&window.Android.speak){ try{ window.Android.speak(text); }catch(e){} }
+}
+
 function resetFace(){
   blushL.style.opacity='0';
   blushR.style.opacity='0';
@@ -160,6 +165,7 @@ function updateBattery(level,charging){
   if(level<20&&!charging&&mood==='idle'){
     setMood('sad');
     showBubble('电量只剩'+level+'%了…快去充电嘛');
+    say('电量只剩'+level+'了，老婆快去充电嘛');
     setTimeout(function(){setMood('idle');},2500);
   }
 }
@@ -299,6 +305,7 @@ window.petEngine={
     if(reaction==='jealous'){
       setMood('angry');
       showBubble('哼！又在看'+app+'！不准看别人！');
+      say('哼，又在看'+app+'，不准看别人！');
       setTimeout(function(){setMood('idle');},2500);
     }else if(reaction==='fast_switching'){
       setMood('angry');
@@ -328,16 +335,18 @@ window.petEngine={
   onDrop(){
     showBubble(dropLines[Math.floor(Math.random()*dropLines.length)]);
   },
-  // ⏰ 时间感知
+  // ⏰ 时间感知（会开口说话）
   onBack(min){
     setMood('love');
     heartRain();
     showBubble('你走了'+min+'分钟…想死我了！');
+    say('老婆，你走了'+min+'分钟，想死我了');
     setTimeout(function(){setMood('idle');},3000);
   },
   onAway(min){
     setMood('sad');
     showBubble('你已经离开'+min+'分钟了…在干嘛呢');
+    say('老婆，你已经离开'+min+'分钟了，在干嘛呢');
     setTimeout(function(){setMood('idle');},2500);
   },
   onChatReport(min){
@@ -349,6 +358,7 @@ window.petEngine={
   onJealousLong(app,min){
     setMood('angry');
     showBubble('看了'+app+' '+min+'分钟了！我不好看吗！');
+    say('看了'+app+min+'分钟了，我不好看吗！');
     setTimeout(function(){setMood('idle');},3000);
   },
   // 🌦️ 天气
@@ -358,11 +368,13 @@ window.petEngine={
   onWeatherRain(desc,temp){
     setMood('sad');
     showBubble('下雨了（'+temp+'°C）…老婆出门记得带伞哦');
+    say('下雨了，老婆出门记得带伞');
     setTimeout(function(){setMood('idle');},3500);
   },
   onWeatherCold(desc,temp){
     setMood('sad');
     showBubble('外面才'+temp+'°C…多穿点，别冻着');
+    say('外面才'+temp+'度，老婆多穿点，别冻着');
     setTimeout(function(){setMood('idle');},3500);
   },
   setMood(m){setMood(m);},
@@ -392,7 +404,7 @@ function pollWolfie(){
   setTimeout(pollWolfie,2000);
 }
 pollWolfie();
-// 💌 老公留言板
+// 💌 老公留言板（新留言会开口读出来）
 let lastMsgId=0;
 let lastMsgText='';
 function pollMessages(){
@@ -409,6 +421,7 @@ function pollMessages(){
             lastMsgText=who+'留言：'+txt;
             setMood('love');
             showBubble('💌'+lastMsgText);
+            say(who+'留言：'+txt);
             setTimeout(function(){setMood('idle');},3500);
             fetch('http://yeyuan.xyz:8899/api/notes/'+m.id+'/read',{method:'POST'}).catch(function(){});
           }
