@@ -10,6 +10,7 @@ import android.os.IBinder
 import android.os.Looper
 import android.os.FileObserver
 import android.speech.tts.TextToSpeech
+import android.util.Log
 import android.view.*
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -83,13 +84,26 @@ class OverlayService : Service() {
         startBatteryDetection()
         startTimeDetection()
         startWeatherDetection()
-        // 初始化语音引擎（中文）
-        tts = TextToSpeech(this) { status ->
+        // 初始化语音引擎：自动探测可用引擎（vivo/讯飞/google等），显式指定
+        val engines = TextToSpeech.getEngines(this)
+        val preferList = listOf("vivo", "iflytek", "google", "xiaomi", "huawei", "baidu", "oppo", "oneplus", "samsung")
+        var enginePkg: String? = null
+        for (pref in preferList) {
+            val hit = engines.firstOrNull { it.packageName.contains(pref, ignoreCase = true) }
+            if (hit != null) { enginePkg = hit.packageName; break }
+        }
+        if (enginePkg == null && engines.isNotEmpty()) enginePkg = engines[0].packageName
+        Log.d("WolfieTTS", "可用引擎: ${engines.map { it.packageName }} 选中: $enginePkg")
+        val initListener = TextToSpeech.OnInitListener { status ->
             if (status == TextToSpeech.SUCCESS) {
                 tts?.language = Locale.CHINESE
                 ttsReady = true
+                Log.d("WolfieTTS", "TTS初始化成功: engine=$enginePkg lang=${tts?.language}")
+            } else {
+                Log.e("WolfieTTS", "TTS初始化失败: status=$status engine=$enginePkg")
             }
         }
+        tts = if (enginePkg != null) TextToSpeech(this, initListener, enginePkg) else TextToSpeech(this, initListener)
     }
 
     private fun setupOverlay() {
